@@ -127,21 +127,20 @@ def main() -> None:
             f"{len(filtered)} enzymes remain after filtering fragments between {min_fragment} and {max_fragment} bp."
         )
 
-        if enzymes_with_selected_cuts:
-            st.subheader("All matching enzymes with exact cut count")
+        if filtered:
+            st.subheader("Filtered enzyme gel preview")
             st.write(
-                "The gel preview below shows every enzyme with the selected number of cuts."
+                "The gel preview below shows only enzymes that passed the fragment-size filter."
             )
             gel_path = generate_gel_visualization(
                 [
-                    (name, cuts, calculate_fragment_sizes(len(sequence), cuts), 0.0)
-                    for name, cuts in enzymes_with_selected_cuts
+                    (name, cut_positions, fragments, score)
+                    for name, cut_positions, fragments, score in filtered
                 ],
                 "streamlit_gel.png",
             )
-            st.image(gel_path, caption="All matching enzymes with exact cut count", use_column_width=True)
+            st.image(gel_path, caption="Filtered enzymes after size selection", use_column_width=True)
 
-        if filtered:
             st.subheader("Filtered enzyme ranking")
             table_rows = []
             for idx, (enzyme_name, cut_positions, fragments, score) in enumerate(filtered, 1):
@@ -164,8 +163,8 @@ def main() -> None:
         st.sidebar.markdown("---")
         st.sidebar.markdown("#### Notes")
         st.sidebar.write(
-            "The gel image shows all enzymes with the selected exact cut count. \n"
-            "The table shows only enzymes that meet the size filter."
+            "The gel image shows only enzymes that meet the selected fragment size criteria. \n"
+            "Enzymes that match the cut count but fail the size filter are excluded."
         )
 
 
