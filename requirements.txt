@@ -41,3 +41,4 @@ six==1.17.0
 typing-inspect==0.9.0
 typing_extensions==4.15.0
 tzdata==2025.3
+streamlit==1.30.0

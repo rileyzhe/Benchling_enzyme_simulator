@@ -8,6 +8,7 @@ help:
 	@echo "Targets:"
 	@echo "  make run           - Analyze plasmid.fasta and generate gel.png and analysis_report.html"
 	@echo "  make install       - Install dependencies into .venv"
+	@echo "  make serve         - Launch the Streamlit web app"
 	@echo "  make clean         - Remove generated output files"
 	@echo "  make clean-all     - Remove generated output files and Python cache"
 	@echo "  make help          - Show this help message"
@@ -16,6 +17,7 @@ help:
 	@echo "  1. Put your plasmid sequence in plasmid.fasta"
 	@echo "  2. Run: make run"
 	@echo "  3. Open analysis_report.html in a browser"
+	@echo "  4. Or run: make serve"
 
 # Default target
 .DEFAULT_GOAL := help
@@ -38,6 +40,10 @@ run: .venv plasmid.fasta
 	@echo "✓ Analysis complete"
 	@echo "📄 Report: analysis_report.html"
 	@echo "🖼️  Gel image: gel.png"
+
+serve: .venv
+	@echo "🚀 Launching Streamlit app..."
+	@. .venv/bin/activate && streamlit run streamlit_app.py
 
 plasmid.fasta:
 	@echo "❌ Error: plasmid.fasta not found!"

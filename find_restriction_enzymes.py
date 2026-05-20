@@ -281,7 +281,7 @@ def generate_gel_visualization(
     ax.set_xlabel('Restriction Enzyme', fontsize=12, fontweight='bold')
     ax.set_ylabel('Migration Distance (larger → smaller fragments)', fontsize=12, fontweight='bold')
     ax.set_title(
-        'Virtual Gel Electrophoresis - Restriction Enzyme Digest (3 cuts)',
+        'Virtual Gel Electrophoresis - Restriction Enzyme Digest',
         fontsize=14,
         fontweight='bold',
         pad=20
