@@ -42,24 +42,19 @@ def main() -> None:
 
     st.title("🧬 Restriction Enzyme Browser")
     st.write(
-        "Paste your plasmid sequence or upload a FASTA file, choose the number of cuts, "
-        "and filter enzymes by minimum fragment length."
+        "Paste your plasmid sequence into the box below, choose the number of cuts, "
+        "and filter enzymes by fragment size."
     )
 
     with st.expander("How to use"):
         st.write(
-            "1. Paste plasmid sequence text or upload a FASTA file.\n"
+            "1. Paste plasmid sequence text into the input box.\n"
             "2. Set the desired number of cuts (2 or 3 is typical).\n"
-            "3. Set the minimum fragment size threshold.\n"
-            "4. Click Analyze to see enzyme options and a gel preview."
+            "3. Set the minimum and maximum fragment size.\n"
+            "4. Click Analyze to see the filtered enzyme list and gel preview."
         )
 
-    uploaded_file = st.file_uploader("Upload plasmid FASTA file", type=["fasta", "fa", "txt"])
-    sequence_input = st.text_area("Or paste plasmid sequence / FASTA text", height=200)
-
-    if uploaded_file is not None:
-        file_contents = uploaded_file.read().decode("utf-8", errors="ignore")
-        sequence_input = file_contents
+    sequence_input = st.text_area("Paste plasmid sequence", height=250)
 
     num_cuts = st.number_input(
         "Desired number of cuts:",
@@ -106,7 +101,7 @@ def main() -> None:
 
         sequence = parse_sequence_input(sequence_input)
         if not sequence:
-            st.error("Please paste a plasmid sequence or upload a FASTA file.")
+            st.error("Please paste a plasmid sequence.")
             return
 
         render_sequence_stats(sequence)
@@ -141,17 +136,14 @@ def main() -> None:
             )
             st.image(gel_path, caption="Filtered enzymes after size selection", use_column_width=True)
 
-            st.subheader("Filtered enzyme ranking")
+            st.subheader("Filtered enzyme list")
             table_rows = []
             for idx, (enzyme_name, cut_positions, fragments, score) in enumerate(filtered, 1):
-                quality = "Excellent" if score >= 0.5 else "Good" if score >= 0.4 else "Fair" if score >= 0.3 else "Poor"
                 table_rows.append(
                     {
                         "Rank": idx,
                         "Enzyme": enzyme_name,
                         "Fragments (bp)": " / ".join(str(f) for f in fragments),
-                        "Score": f"{score:.3f}",
-                        "Quality": quality,
                     }
                 )
             st.table(table_rows)
