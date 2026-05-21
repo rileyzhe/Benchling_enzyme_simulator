@@ -1,0 +1,88 @@
+enzyme,recognition_site,optimal_temp,buffer,rCutSmart_activity,heat_inactivation,methylation_sensitivity,notes
+AatII,GACGTC,37°C,CutSmart,100%,65°C 20 min,None,Produces 4-base 3' overhang
+Acc65I,G^GTACC,37°C,rCutSmart,100%,65°C 20 min,None,Isoschizomer of KpnI; not sensitive to KpnI methylation
+AciI,CCGC,37°C,rCutSmart,100%,Not inactivated,None,Frequent 4-base cutter
+AclI,AA^CGTT,37°C,rCutSmart,100%,65°C 20 min,None,
+AfeI,AGC^GCT,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+AflII,C^TTAAG,37°C,rCutSmart,100%,65°C 20 min,None,
+AflIII,A^CRYGT,37°C,rCutSmart,100%,65°C 20 min,None,Degenerate recognition site
+AgeI,A^CCGGT,37°C,rCutSmart,100%,65°C 20 min,None,"Compatible overhangs with XmaI, BspEI"
+AhdI,GACNNNNNGTC,37°C,rCutSmart,100%,65°C 20 min,None,Degenerate recognition site
+AluI,AG^CT,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end frequent 4-cutter
+ApaI,GGGCC^C,25°C,CutSmart,25%,65°C 20 min,None,Optimal at 25°C; produces 3' overhang
+ApaLI,G^TGCAC,37°C,rCutSmart,100%,65°C 20 min,None,
+AscI,GG^CGCGCC,37°C,rCutSmart,100%,65°C 20 min,None,Rare 8-cutter
+AseI,AT^TAAT,37°C,rCutSmart,100%,65°C 20 min,None,
+AsiSI,GCGAT^CGC,37°C,rCutSmart,100%,65°C 20 min,CpG,Sensitive to CpG methylation; rare 8-cutter
+AvaI,C^YCGRG,37°C,CutSmart,Unknown,65°C 20 min,None,Degenerate recognition site
+AvrII,C^CTAGG,37°C,rCutSmart,100%,65°C 20 min,None,"Compatible overhangs with NheI, XbaI, SpeI"
+BamHI,G^GATCC,37°C,rCutSmart,100%,65°C 20 min,None,Compatible overhangs with BglII (non-regenerating)
+BclI,T^GATCA,60°C,rCutSmart,100%,80°C 20 min,Dam,Blocked by Dam methylation; optimal at 60°C
+BglI,GCCNNNNNGGC,37°C,rCutSmart,100%,65°C 20 min,None,Degenerate recognition site
+BglII,A^GATCT,37°C,rCutSmart,100%,65°C 20 min,None,Compatible overhangs with BamHI (non-regenerating)
+BmgBI,CAC^GTC,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+BmtI,GCTAG^C,37°C,rCutSmart,100%,65°C 20 min,None,Compatible overhangs with NheI
+BsmBI,CGTCTCN,37°C,rCutSmart,100%,55°C 20 min,None,Type IIS; used in Golden Gate assembly
+BspDI,AT^CGAT,37°C,rCutSmart,100%,65°C 20 min,Dam,Isoschizomer of ClaI; Dam sensitive
+BspEI,T^CCGGA,37°C,rCutSmart,100%,65°C 20 min,None,"Compatible overhangs with AgeI, XmaI"
+BspHI,T^CATGA,37°C,CutSmart,50%,65°C 20 min,None,Compatible overhangs with NcoI
+BsrGI,T^GTACA,37°C,rCutSmart,100%,65°C 20 min,None,
+BssHII,G^CGCGC,37°C,rCutSmart,75%,65°C 20 min,CpG,Sensitive to CpG methylation
+BstBI,TT^CGAA,65°C,rCutSmart,100%,Not inactivated,None,Thermophilic; optimal at 65°C
+BstEII,G^GTNACC,60°C,rCutSmart,100%,80°C 20 min,None,Works best at 60°C; degenerate site
+BstUI,CG^CG,60°C,rCutSmart,100%,Not inactivated,CpG,Blocked by CpG methylation; optimal at 60°C
+ClaI,AT^CGAT,37°C,rCutSmart,100%,65°C 20 min,Dam,Blocked by Dam methylation in GATCGAT context
+DpnI,GA^TC,37°C,rCutSmart,100%,80°C 20 min,Dam (required),Cuts only Dam-methylated DNA; for post-PCR template removal
+DraI,TTT^AAA,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+EagI,C^GGCCG,37°C,rCutSmart,75%,65°C 20 min,CpG,Compatible overhangs with NotI; CpG sensitive
+EcoRI,G^AATTC,37°C,rCutSmart,100%,65°C 20 min,None,Classic workhorse enzyme; produces 5' overhang
+EcoRV,GAT^ATC,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+FokI,GGATG,37°C,rCutSmart,100%,65°C 20 min,None,Type IIS; cuts outside recognition site
+FseI,GGCCGG^CC,37°C,rCutSmart,75%,65°C 20 min,None,Rare 8-cutter; may need extended incubation
+HaeIII,GG^CC,37°C,rCutSmart,100%,80°C 20 min,None,Blunt frequent 4-cutter
+HindIII,A^AGCTT,37°C,rCutSmart,100%,65°C 20 min,None,Produces 4-base 5' overhang
+HinfI,G^ANTC,37°C,rCutSmart,100%,65°C 20 min,None,Degenerate recognition site
+HpaI,GTT^AAC,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+HpaII,C^CGG,37°C,rCutSmart,100%,65°C 20 min,CpG,Blocked by CpG methylation (compare MspI)
+KpnI,GGTAC^C,37°C,rCutSmart,75%,65°C 20 min,None,"Produces 3' overhang; star activity at high glycerol, extended time"
+MfeI,C^AATTG,37°C,rCutSmart,100%,65°C 20 min,None,Compatible overhangs with EcoRI (non-regenerating)
+MluI,A^CGCGT,37°C,rCutSmart,100%,65°C 20 min,None,
+MseI,T^TAA,37°C,rCutSmart,100%,65°C 20 min,None,Frequent 4-cutter
+MspI,C^CGG,37°C,rCutSmart,100%,65°C 20 min,None,Cuts regardless of CpG methylation (unlike HpaII)
+NarI,GG^CGCC,37°C,rCutSmart,75%,65°C 20 min,CpG,Star activity prone; CpG sensitive
+NcoI,C^CATGG,37°C,rCutSmart,100%,65°C 20 min,Dcm,Overlaps with Dcm methylation site
+NdeI,CA^TATG,37°C,rCutSmart,100%,65°C 20 min,None,Commonly used with T7 expression vectors
+NheI,G^CTAGC,37°C,rCutSmart,100%,65°C 20 min,None,"Compatible overhangs with XbaI, SpeI, AvrII"
+NotI,GC^GGCCGC,37°C,rCutSmart,75%,65°C 20 min,CpG,Rare 8-cutter; CpG sensitive; may need longer digest
+NruI,TCG^CGA,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+NsiI,ATGCA^T,37°C,rCutSmart,100%,65°C 20 min,None,Produces 3' overhang
+PacI,TTAAT^TAA,37°C,rCutSmart,75%,65°C 20 min,None,Rare 8-cutter; may require extended incubation
+PciI,A^CATGT,37°C,rCutSmart,100%,65°C 20 min,None,Compatible overhangs with NcoI
+PmeI,GTTT^AAAC,37°C,rCutSmart,100%,65°C 20 min,None,Rare 8-cutter; blunt-end
+PmlI,CAC^GTG,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+PspOMI,G^GGCCC,25°C,CutSmart,25%,65°C 20 min,None,Compatible overhangs with ApaI; optimal at 25°C
+PstI,CTGCA^G,37°C,rCutSmart,100%,65°C 20 min,None,"Produces 3' overhang; star activity at high glycerol"
+PvuI,CGATC^G,37°C,rCutSmart,100%,65°C 20 min,None,Produces 3' overhang
+PvuII,CAG^CTG,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+RsaI,GT^AC,37°C,rCutSmart,100%,65°C 20 min,None,Blunt frequent 4-cutter
+SacI,GAGCT^C,37°C,rCutSmart,75%,65°C 20 min,None,Produces 3' overhang; star activity in some conditions
+SacII,CCGC^GG,37°C,rCutSmart,75%,Not inactivated,CpG,CpG sensitive; not heat inactivated
+SalI,G^TCGAC,37°C,rCutSmart,75%,65°C 20 min,None,Compatible overhangs with XhoI (non-regenerating)
+SbfI,CCTGCA^GG,37°C,rCutSmart,100%,80°C 20 min,None,Compatible overhangs with PstI (non-regenerating)
+ScaI,AGT^ACT,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+SfiI,GGCCNNNNNGGCC,50°C,rCutSmart,100%,65°C 20 min,None,Works best at 50°C; non-palindromic degenerate site
+SfoI,GGC^GCC,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter; neoschizomer of NarI
+SgrAI,CR^CCGGYG,37°C,rCutSmart,100%,65°C 20 min,None,Degenerate recognition site
+SmaI,CCC^GGG,25°C,rCutSmart,75%,65°C 20 min,None,"Blunt-end; optimal at 25°C; isoschizomer of XmaI, which cuts at 37°C"
+SpeI,A^CTAGT,37°C,rCutSmart,100%,80°C 20 min,None,"Compatible overhangs with NheI, XbaI, AvrII"
+SphI,GCATG^C,37°C,rCutSmart,100%,65°C 20 min,None,Produces 4-base 3' overhang
+SrfI,GCCC^GGGC,37°C,CutSmart,Unknown,65°C 20 min,None,Rare 8-cutter; blunt-end
+SspI,AAT^ATT,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+StuI,AGG^CCT,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter
+SwaI,ATTT^AAAT,25°C,CutSmart,Unknown,65°C 20 min,None,Optimal at 25°C; rare 8-cutter; blunt-end
+TaqI,T^CGA,65°C,rCutSmart,100%,Not inactivated,Dam,Thermophilic; optimal at 65°C; Dam sensitive
+XbaI,T^CTAGA,37°C,rCutSmart,75%,65°C 20 min,Dam,Partially blocked by Dam methylation in specific contexts
+XhoI,C^TCGAG,37°C,rCutSmart,100%,65°C 20 min,None,Compatible overhangs with SalI (non-regenerating)
+XmaI,C^CCGGG,37°C,rCutSmart,100%,65°C 20 min,None,"Isoschizomer of SmaI; cuts at 37°C, leaves 5' overhang"
+XmnI,GAANNNNTTC,37°C,rCutSmart,100%,65°C 20 min,None,Blunt-end cutter; degenerate recognition
+ZraI,GAC^GTC,37°C,rCutSmart,100%,65°C 20 min,None,Isoschizomer of AatII; blunt-end cutter
