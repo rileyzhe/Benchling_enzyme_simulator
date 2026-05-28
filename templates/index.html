@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restriction Enzyme Analyzer</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+  <style>
+    body { background: #f8f9fa; font-size: 0.92rem; }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #dee2e6;
+      min-height: 100vh;
+      padding: 1.5rem 1rem;
+      position: sticky;
+      top: 0;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+    .sidebar-section-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #888;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+
+    /* ── Main content ─────────────────────────────────────────── */
+    .main-content { padding: 1.5rem 2rem; }
+    h1 { font-size: 1.75rem; font-weight: 700; }
+
+    /* ── Tabs ─────────────────────────────────────────────────── */
+    .nav-tabs .nav-link { color: #555; }
+    .nav-tabs .nav-link.active { font-weight: 600; color: #212529; }
+    .tab-panel {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-top: none;
+      padding: 1.5rem;
+    }
+
+    /* ── Alert boxes ──────────────────────────────────────────── */
+    .alert-success-custom  { background:#d4edda; border:1px solid #c3e6cb; color:#155724; border-radius:4px; padding:.6rem 1rem; margin-bottom:.6rem; }
+    .alert-info-custom     { background:#cce5ff; border:1px solid #b8daff; color:#004085; border-radius:4px; padding:.6rem 1rem; margin-bottom:.6rem; }
+    .alert-warning-custom  { background:#fff3cd; border:1px solid #ffeeba; color:#856404; border-radius:4px; padding:.6rem 1rem; margin-bottom:.6rem; }
+    .alert-danger-custom   { background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; border-radius:4px; padding:.6rem 1rem; margin-bottom:.6rem; }
+
+    /* ── Enzyme table ─────────────────────────────────────────── */
+    .table-wrapper { overflow-x: auto; }
+    table.enzyme-table { font-size: 0.82rem; }
+    table.enzyme-table td, table.enzyme-table th { padding: .35rem .55rem; white-space: nowrap; }
+
+    /* ── Plasmid map enzyme list ──────────────────────────────── */
+    .enzyme-check-list {
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      padding: .5rem .75rem;
+      background: #fff;
+    }
+    .enzyme-check-list label {
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .15rem 0;
+      cursor: pointer;
+    }
+    .enzyme-check-list label:hover { background: #f8f9fa; }
+
+    /* ── Spinner overlay ──────────────────────────────────────── */
+    .spinner-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,.75);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .spinner-overlay.active { display: flex; }
+  </style>
+</head>
+<body>
+
+<!-- Loading spinner -->
+<div class="spinner-overlay" id="spinnerOverlay">
+  <div class="text-center">
+    <div class="spinner-border text-primary" style="width:3rem;height:3rem;" role="status"></div>
+    <div class="mt-2 fw-semibold">Finding matching enzymes…</div>
+  </div>
+</div>
+
+<div class="container-fluid p-0">
+  <div class="row g-0">
+
+    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
+    <div class="col-md-2 sidebar">
+      <div class="sidebar-section-title">Enzyme Subset</div>
+      <div class="mb-1"><strong>Joglekar Lab Enzymes</strong></div>
+      <div class="text-muted small">{{ enzyme_count }} enzymes loaded</div>
+      <div class="text-muted small mb-4">{{ metadata_count }} enzymes with metadata</div>
+
+      <div id="seqSummary" style="display:none;">
+        <hr class="my-2">
+        <div class="sidebar-section-title">Sequence Summary</div>
+        <div class="mb-2"><strong>Length:</strong> <span id="seqLen">—</span> bp</div>
+        <div id="subseqMatches"></div>
+      </div>
+
+      <hr class="my-2">
+      <div class="sidebar-section-title">Notes</div>
+      <div class="small text-muted lh-sm">
+        <p class="mb-2">• <strong>Star activity</strong> — some enzymes (e.g. EcoRI, PstI) show relaxed specificity at 50% activity in CutSmart. Use HF versions to avoid this.</p>
+        <p class="mb-2">• <strong>Cut positions</strong> are 1-based and refer to the top strand.</p>
+        <p class="mb-2">• <strong>Fragment sizes</strong> assume a circular plasmid.</p>
+        <p class="mb-0">• <strong>Missing bands</strong> — fragments smaller than the ladder's lowest rung (~100 bp for most ladders) are not visible on the gel. Check the Fragments (bp) column in the Enzyme Table to see all fragment sizes.</p>
+      </div>
+    </div>
+
+    <!-- ── Main content ──────────────────────────────────────────────── -->
+    <div class="col-md-10 main-content">
+      <h1>🧬 Restriction Enzyme Browser</h1>
+      <p class="text-muted mb-4">Paste your plasmid sequence into the box below, choose the number of cuts, and filter enzymes by fragment size.</p>
+
+      <!-- Sequence input -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Paste plasmid sequence</label>
+        <textarea class="form-control font-monospace" id="sequenceInput" rows="8"
+          placeholder="Paste FASTA or raw sequence…"></textarea>
+      </div>
+
+      <!-- Dynamic subsequence boxes -->
+      <div class="mb-3">
+        <label class="form-label fw-semibold">
+          Target regions <span class="text-muted fw-normal">(optional)</span>
+        </label>
+        <div id="subseqBoxes"></div>
+        <div class="text-muted" style="font-size:0.78rem; margin-top:0.25rem;">
+          Enter a DNA sequence (e.g. <code>ATGCGT…</code>), a position range (e.g. <code>2kb-3kb</code> or <code>2000-3000</code>), or a label followed by either (e.g. <code>Insert: 2kb-3kb</code>).
+        </div>
+      </div>
+
+      <!-- Numeric controls row -->
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <label class="form-label">Number of cuts</label>
+          <select class="form-select mb-1" id="cutsMode" onchange="updateCutsInput()">
+            <option value="exactly">Exactly N</option>
+            <option value="atmost">At most N</option>
+            <option value="any">Any</option>
+          </select>
+          <input type="number" class="form-control" id="numCuts" min="1" max="20" value="3">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Minimum fragment size (bp)</label>
+          <input type="number" class="form-control" id="minFragment" min="0" max="10000" value="0" step="50">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Maximum fragment size (bp)</label>
+          <input type="number" class="form-control" id="maxFragment" min="0" max="20000" value="10000" step="50">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Choose ladder</label>
+          <select class="form-select" id="ladderChoice">
+            {% for name in ladder_options %}
+            <option value="{{ name }}" {% if loop.first %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Subseq filters -->
+      <div class="mb-3">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="filterBySubseq">
+          <label class="form-check-label" for="filterBySubseq">
+            Only show enzymes cutting in <em>any</em> target region
+          </label>
+        </div>
+        <div class="form-check mt-1">
+          <input class="form-check-input" type="checkbox" id="filterAllTargets">
+          <label class="form-check-label" for="filterAllTargets">
+            Must cut in <em>every</em> target region
+          </label>
+        </div>
+      </div>
+
+      <div id="inputError" class="alert-danger-custom" style="display:none;"></div>
+
+      <button class="btn btn-primary mb-4 px-4" id="analyzeBtn" onclick="handleAnalyze()">
+        Analyze
+      </button>
+
+      <!-- ── Results ──────────────────────────────────────────────────── -->
+      <div id="resultsSection" style="display:none;">
+        <ul class="nav nav-tabs" id="resultTabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-tab="summary" onclick="switchTab('summary',this)">Summary &amp; Gel</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-tab="table" onclick="switchTab('table',this)">Enzyme Table</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-tab="plasmid" onclick="switchTab('plasmid',this)">Plasmid Map</button>
+          </li>
+        </ul>
+
+        <!-- Tab 1: Summary & Gel -->
+        <div class="tab-panel" id="tab-summary">
+          <h5 class="mt-1">Single enzyme results</h5>
+          <div id="enzymeCountInfo"></div>
+          <div id="gelContainer"></div>
+        </div>
+
+        <!-- Tab 2: Enzyme Table -->
+        <div class="tab-panel" id="tab-table" style="display:none;">
+          <div class="row g-2 mb-3">
+            <div class="col-md-5">
+              <input type="text" class="form-control" id="nameFilter"
+                placeholder="Filter by enzyme name (e.g. EcoRI, BamHI)"
+                oninput="applyTableFilter()">
+            </div>
+            <div class="col-md-4">
+              <select class="form-select" id="sortBy" onchange="applyTableFilter()">
+                <option value="default">Fragment spacing (default)</option>
+                <option value="name">Enzyme name</option>
+                <option value="rcutsmart">rCutSmart activity</option>
+                <option value="temp">Optimal temperature</option>
+                <option value="cuts"># cuts</option>
+                <option value="position">First cut position</option>
+              </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-center">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="sortDesc" onchange="applyTableFilter()">
+                <label class="form-check-label" for="sortDesc">Descending</label>
+              </div>
+            </div>
+          </div>
+          <div class="table-wrapper">
+            <table class="table table-bordered table-hover enzyme-table" id="enzymeTable">
+              <thead class="table-light">
+                <tr>
+                  <th>Rank</th><th>Enzyme</th><th>Recognition site</th><th># cuts</th>
+                  <th>Cut positions</th><th>Fragments (bp)</th><th>Optimal temp</th>
+                  <th>rCutSmart activity</th><th>Heat inactivation</th>
+                  <th>Methylation sensitivity</th><th>Cuts in target</th><th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="enzymeTableBody"></tbody>
+            </table>
+          </div>
+          <div id="tableEmpty" class="text-muted" style="display:none;">No enzymes match the filter.</div>
+        </div>
+
+        <!-- Tab 3: Plasmid Map -->
+        <div class="tab-panel" id="tab-plasmid" style="display:none;">
+          <div class="mb-3">
+            <div class="d-flex align-items-center gap-3 mb-1">
+              <label class="form-label fw-semibold mb-0">Select enzymes to display on map</label>
+              <button class="btn btn-sm btn-outline-secondary" onclick="setAllEnzymes(true)">Select all</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="setAllEnzymes(false)">Deselect all</button>
+            </div>
+            <div class="enzyme-check-list" id="enzymeCheckboxList"></div>
+          </div>
+          <div id="plasmidMapContainer"></div>
+        </div>
+      </div>
+    </div><!-- /main-content -->
+  </div><!-- /row -->
+</div><!-- /container -->
+
+<div style="text-align:center; padding: 6px 0 10px; font-size: 0.68rem; color: #bbb;">built with <a href="https://claude.ai" style="color:#bbb; text-decoration:none;">Claude</a></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let analysisData = null;
+let tableRows    = [];
+const MAX_SUBSEQ = 10;
+
+// ── Subsequence boxes ───────────────────────────────────────────────────────
+function buildSubseqBoxes() {
+  const container = document.getElementById('subseqBoxes');
+  const inputs = Array.from(container.querySelectorAll('.subseq-input'));
+  const lastFilled = inputs.reduce((acc, el, i) => el.value.trim() ? i : acc, -1);
+  const needed = Math.min(lastFilled + 2, MAX_SUBSEQ);
+
+  // Add missing boxes
+  while (container.querySelectorAll('.subseq-input').length < needed) {
+    appendSubseqBox(container);
+  }
+  // Trim trailing empty boxes beyond the one after last-filled
+  const all = Array.from(container.querySelectorAll('.subseq-input'));
+  for (let i = all.length - 1; i > 0; i--) {
+    if (!all[i].value.trim() && i > lastFilled + 1) container.removeChild(all[i].parentElement || all[i]);
+    else break;
+  }
+  // Re-label
+  Array.from(container.querySelectorAll('.subseq-row')).forEach((row, i) => {
+    row.querySelector('label').textContent = `Target ${i + 1}`;
+  });
+}
+
+function appendSubseqBox(container) {
+  const idx = container.querySelectorAll('.subseq-input').length;
+  const row = document.createElement('div');
+  row.className = 'subseq-row mb-2';
+  row.innerHTML = `<label class="form-label small mb-1">Target ${idx + 1}</label>
+    <input type="text" class="form-control subseq-input"
+      placeholder="ATGCGT… or 2kb-3kb or Label: 2000-3000">`;
+  row.querySelector('input').addEventListener('input', buildSubseqBoxes);
+  container.appendChild(row);
+}
+
+// Init first box
+appendSubseqBox(document.getElementById('subseqBoxes'));
+
+function getSubseqLines() {
+  return Array.from(document.querySelectorAll('.subseq-input'))
+    .map(el => el.value.trim()).filter(Boolean);
+}
+
+// ── Tab switching ───────────────────────────────────────────────────────────
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-panel').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('#resultTabs .nav-link').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + tabId).style.display = 'block';
+  btn.classList.add('active');
+  if (tabId === 'plasmid' && analysisData) renderPlasmidMap();
+}
+
+function updateCutsInput() {
+  document.getElementById('numCuts').disabled = document.getElementById('cutsMode').value === 'any';
+}
+
+// ── Analyze ─────────────────────────────────────────────────────────────────
+async function handleAnalyze() {
+  const errorDiv = document.getElementById('inputError');
+  errorDiv.style.display = 'none';
+
+  const cutsMode = document.getElementById('cutsMode').value;
+  const nCuts = parseInt(document.getElementById('numCuts').value) || 3;
+  const payload = {
+    sequence:       document.getElementById('sequenceInput').value,
+    cuts_mode:      cutsMode,
+    num_cuts:       cutsMode === 'any' ? null : nCuts,
+    min_fragment:   parseInt(document.getElementById('minFragment').value),
+    max_fragment:   parseInt(document.getElementById('maxFragment').value),
+    ladder_choice:  document.getElementById('ladderChoice').value,
+    subseq_input:   getSubseqLines().join('\n'),
+    filter_by_subseq: document.getElementById('filterBySubseq').checked,
+    filter_all_targets: document.getElementById('filterAllTargets').checked,
+  };
+
+  document.getElementById('spinnerOverlay').classList.add('active');
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('resultsSection').style.display = 'none';
+
+  try {
+    const resp = await fetch('/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      errorDiv.textContent = data.error;
+      errorDiv.style.display = 'block';
+      return;
+    }
+
+    analysisData = data;
+    displayResults(data);
+
+  } catch (e) {
+    errorDiv.textContent = 'Network error: ' + e.message;
+    errorDiv.style.display = 'block';
+  } finally {
+    document.getElementById('spinnerOverlay').classList.remove('active');
+    document.getElementById('analyzeBtn').disabled = false;
+  }
+}
+
+// ── Display all results ──────────────────────────────────────────────────────
+function displayResults(data) {
+  // Sidebar sequence summary
+  document.getElementById('seqLen').textContent = data.sequence_length.toLocaleString();
+  document.getElementById('seqSummary').style.display = 'block';
+
+  // Show results, switch to summary tab
+  document.getElementById('resultsSection').style.display = 'block';
+  switchTab('summary', document.querySelector('[data-tab="summary"]'));
+
+  // ── Tab 1: Summary & Gel ──────────────────────────────────────────────── //
+  const subseqDiv = document.getElementById('subseqMatches');
+  subseqDiv.innerHTML = '';
+  if (data.subseq_display && data.subseq_display.length) {
+    const title = document.createElement('div');
+    title.className = 'sidebar-section-title mt-2';
+    title.textContent = 'Target Regions';
+    subseqDiv.appendChild(title);
+    data.subseq_display.forEach(item => {
+      const div = document.createElement('div');
+      div.style.cssText = 'font-size:0.78rem; margin-bottom:0.35rem;';
+      if (!item.found) {
+        div.innerHTML = `<span style="color:#856404;"><strong>${item.label}</strong> — not found</span>`;
+      } else {
+        const locs = item.positions.map(([s, e]) => `${s + 1}–${e}`).join(', ');
+        div.innerHTML = `<strong>${item.label}</strong> (${item.length} bp)<br><span class="text-muted">${locs}</span>`;
+      }
+      subseqDiv.appendChild(div);
+    });
+  }
+
+  const cutsLabel = data.cuts_mode === 'any' ? '1 or more cuts'
+                  : data.cuts_mode === 'atmost' ? `at most ${data.max_cuts} cuts`
+                  : `exactly ${data.num_cuts} cuts`;
+  document.getElementById('enzymeCountInfo').innerHTML = `
+    <div class="alert-success-custom">Found ${data.enzymes_total} enzymes with ${cutsLabel}.</div>
+    <div class="alert-info-custom">${data.filtered_count} enzymes remain after filtering fragments between ${data.min_fragment} and ${data.max_fragment} bp${data.subseq_note}.</div>
+  `;
+
+  const gelContainer = document.getElementById('gelContainer');
+  gelContainer.innerHTML = '';
+  if (data.gel_image_b64) {
+    const img = document.createElement('img');
+    img.src = 'data:image/png;base64,' + data.gel_image_b64;
+    img.style.width = '100%';
+    gelContainer.appendChild(img);
+  } else {
+    const w = document.createElement('div');
+    w.className = 'alert-warning-custom';
+    w.textContent = 'No enzymes passed the filter. Try lowering the minimum size or raising the maximum size' +
+      (data.filter_by_subseq ? ', or adjusting the subsequence targets.' : '.');
+    gelContainer.appendChild(w);
+  }
+
+  // ── Tab 2: Enzyme Table ───────────────────────────────────────────────── //
+  renderTable(data.table_rows);
+
+  // ── Tab 3: Plasmid Map (controls only; chart renders on tab switch) ────── //
+  setupPlasmidMapControls(data);
+}
+
+// ── Enzyme table ─────────────────────────────────────────────────────────────
+const TABLE_COLS = [
+  'Rank', 'Enzyme', 'Recognition site', '# cuts', 'Cut positions',
+  'Fragments (bp)', 'Optimal temp', 'rCutSmart activity',
+  'Heat inactivation', 'Methylation sensitivity', 'Cuts in target', 'Notes',
+];
+
+function cellStyle(col, val) {
+  const v = String(val || '');
+  if (col === 'rCutSmart activity') {
+    if (v === '100%')   return 'background:#d4edda;color:#155724;';
+    if (v === 'Unknown') return 'background:#e9ecef;color:#6c757d;';
+    if (v.includes('%')) return 'background:#fff3cd;color:#856404;';
+  }
+  if (col === 'Heat inactivation') {
+    if (v === 'Unknown')         return 'background:#e9ecef;color:#6c757d;';
+    if (v === 'Not inactivated') return 'background:#fde8d8;color:#7d3c0a;';
+    return 'background:#d4edda;color:#155724;';
+  }
+  if (['Recognition site', 'Optimal temp', 'Methylation sensitivity'].includes(col) && v === 'Unknown')
+    return 'background:#e9ecef;color:#6c757d;';
+  if (col === 'Notes' && v.toLowerCase().includes('star'))
+    return 'background:#f8d7da;color:#721c24;';
+  return '';
+}
+
+function renderTable(rows) {
+  tableRows = rows || [];
+  applyTableFilter();
+}
+
+function applyTableFilter() {
+  const nameFilter = (document.getElementById('nameFilter').value || '').trim().toLowerCase();
+  const sortBy     = document.getElementById('sortBy').value;
+  const desc       = document.getElementById('sortDesc').checked;
+
+  let rows = [...tableRows];
+  if (nameFilter) rows = rows.filter(r => r['Enzyme'].toLowerCase().includes(nameFilter));
+
+  const pct  = v => { const n = parseFloat(v); return isNaN(n) ? -1 : n; };
+  const temp = v => { const n = parseFloat(v); return isNaN(n) ? -1 : n; };
+  const pos  = v => { const n = parseInt((v||'').split(',')[0]); return isNaN(n) ? -1 : n; };
+  const dir  = desc ? -1 : 1;
+
+  if      (sortBy === 'name')       rows.sort((a,b) => a['Enzyme'].localeCompare(b['Enzyme']) * dir);
+  else if (sortBy === 'rcutsmart')  rows.sort((a,b) => (pct(a['rCutSmart activity']) - pct(b['rCutSmart activity'])) * dir);
+  else if (sortBy === 'temp')       rows.sort((a,b) => (temp(a['Optimal temp']) - temp(b['Optimal temp'])) * dir);
+  else if (sortBy === 'cuts')       rows.sort((a,b) => (a['# cuts'] - b['# cuts']) * dir);
+  else if (sortBy === 'position')   rows.sort((a,b) => (pos(a['Cut positions']) - pos(b['Cut positions'])) * dir);
+
+  const tbody     = document.getElementById('enzymeTableBody');
+  const tableEl   = document.getElementById('enzymeTable');
+  const tableEmpty = document.getElementById('tableEmpty');
+  tbody.innerHTML = '';
+
+  if (!rows.length) {
+    tableEl.style.display = 'none';
+    tableEmpty.style.display = 'block';
+    return;
+  }
+  tableEl.style.display = '';
+  tableEmpty.style.display = 'none';
+
+  rows.forEach(row => {
+    const tr = document.createElement('tr');
+    TABLE_COLS.forEach(col => {
+      const td = document.createElement('td');
+      td.textContent = row[col] ?? '';
+      const s = cellStyle(col, row[col]);
+      if (s) td.setAttribute('style', s);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Plasmid Map ───────────────────────────────────────────────────────────────
+function setupPlasmidMapControls(data) {
+  const list = document.getElementById('enzymeCheckboxList');
+  list.innerHTML = '';
+
+  const names = (data.enzyme_cuts_all || []).map(([n]) => n);
+  const defaultOn = new Set(names.slice(0, Math.min(8, names.length)));
+
+  if (!names.length) {
+    list.innerHTML = '<span class="text-muted small">No enzymes passed the filter.</span>';
+    return;
+  }
+
+  names.forEach(name => {
+    const label = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = name;
+    cb.checked = defaultOn.has(name);
+    cb.addEventListener('change', renderPlasmidMap);
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + name));
+    list.appendChild(label);
+  });
+}
+
+function setAllEnzymes(checked) {
+  document.querySelectorAll('#enzymeCheckboxList input[type=checkbox]')
+    .forEach(cb => cb.checked = checked);
+  renderPlasmidMap();
+}
+
+async function renderPlasmidMap() {
+  if (!analysisData) return;
+
+  const selected = new Set(
+    Array.from(document.querySelectorAll('#enzymeCheckboxList input:checked')).map(cb => cb.value)
+  );
+  const enzymeCuts = (analysisData.enzyme_cuts_all || []).filter(([name]) => selected.has(name));
+
+  const container = document.getElementById('plasmidMapContainer');
+  container.innerHTML = '<div class="text-center p-4"><div class="spinner-border text-primary"></div></div>';
+
+  try {
+    const resp = await fetch('/plasmid_map', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        sequence_length: analysisData.sequence_length,
+        subseq_display:  analysisData.subseq_display,
+        enzyme_cuts:     enzymeCuts,
+      }),
+    });
+    const result = await resp.json();
+
+    if (result.error) {
+      container.innerHTML = `<div class="alert-danger-custom">${result.error}</div>`;
+      return;
+    }
+
+    container.innerHTML = '<div id="plasmidPlot"></div>';
+    const fig = JSON.parse(result.plotly_json);
+    Plotly.newPlot('plasmidPlot', fig.data, fig.layout, {
+      scrollZoom: false, doubleClick: false, displayModeBar: false,
+    });
+  } catch (e) {
+    container.innerHTML = `<div class="alert-danger-custom">Error generating map: ${e.message}</div>`;
+  }
+}
+
+// ── localStorage persistence ────────────────────────────────────────────────
+const SIMPLE_IDS = ['sequenceInput', 'cutsMode', 'numCuts', 'minFragment', 'maxFragment', 'ladderChoice'];
+const CHECKBOX_IDS = ['filterBySubseq', 'filterAllTargets'];
+
+function saveFormState() {
+  const state = {};
+  SIMPLE_IDS.forEach(id => { state[id] = document.getElementById(id).value; });
+  CHECKBOX_IDS.forEach(id => { state[id] = document.getElementById(id).checked; });
+  state.subseqValues = Array.from(document.querySelectorAll('.subseq-input')).map(el => el.value);
+  localStorage.setItem('enzymeFormState', JSON.stringify(state));
+}
+
+function restoreFormState() {
+  const raw = localStorage.getItem('enzymeFormState');
+  if (!raw) return;
+  const state = JSON.parse(raw);
+  SIMPLE_IDS.forEach(id => { if (state[id] != null) document.getElementById(id).value = state[id]; });
+  CHECKBOX_IDS.forEach(id => { if (state[id] != null) document.getElementById(id).checked = state[id]; });
+  if (Array.isArray(state.subseqValues) && state.subseqValues.length) {
+    const container = document.getElementById('subseqBoxes');
+    container.innerHTML = '';
+    state.subseqValues.forEach(val => {
+      appendSubseqBox(container);
+      container.querySelectorAll('.subseq-input')[container.querySelectorAll('.subseq-input').length - 1].value = val;
+    });
+    buildSubseqBoxes();
+  }
+  updateCutsInput();
+}
+
+// Attach save listeners
+SIMPLE_IDS.forEach(id => document.getElementById(id).addEventListener('input', saveFormState));
+CHECKBOX_IDS.forEach(id => document.getElementById(id).addEventListener('change', saveFormState));
+document.getElementById('subseqBoxes').addEventListener('input', saveFormState);
+
+restoreFormState();
+</script>
+</body>
+</html>

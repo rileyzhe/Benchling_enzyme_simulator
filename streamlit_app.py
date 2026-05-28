@@ -1,4 +1,5 @@
 import csv
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -96,6 +97,23 @@ def find_subsequence_matches(plasmid, subsequences):
     return matches
 
 
+def parse_position_range(text: str, sequence_length: int) -> tuple | None:
+    """Parse '2000-3000', '2kb-3kb', '2k-3k', '1.5kb-2.5kb' into 0-based (start, end) or None."""
+    m = re.match(
+        r'^\s*(\d+(?:\.\d+)?)\s*(k|kb)?\s*-\s*(\d+(?:\.\d+)?)\s*(k|kb)?\s*$',
+        text, re.IGNORECASE,
+    )
+    if not m:
+        return None
+    start_val = float(m.group(1)) * (1000 if m.group(2) else 1)
+    end_val = float(m.group(3)) * (1000 if m.group(4) else 1)
+    start = max(0, int(round(start_val)) - 1)  # 1-based → 0-based
+    end = min(sequence_length, int(round(end_val)))
+    if start >= end:
+        return None
+    return (start, end)
+
+
 def parse_subseq_input(text: str) -> list[tuple[str, str]]:
     """
     Parse subsequence input lines. Each line may be 'Label: SEQUENCE' or bare 'SEQUENCE'.
@@ -129,6 +147,18 @@ def enzyme_cuts_in_regions(cut_positions, regions):
         start <= (cut - 1) < end
         for cut in cut_positions
         for start, end in regions
+    )
+
+
+def enzyme_cuts_in_all_targets(cut_positions, regions_by_target):
+    """True if enzyme has at least one cut in every target's regions."""
+    return all(
+        any(
+            start <= (cut - 1) < end
+            for cut in cut_positions
+            for (start, end) in target_regions
+        )
+        for target_regions in regions_by_target
     )
 
 
@@ -178,13 +208,19 @@ def main() -> None:
         if st.session_state.get(f"subseq_{_i}", "").strip()
     )
 
-    num_cuts = st.number_input(
-        "Desired number of cuts:",
-        min_value=1,
-        max_value=10,
-        value=3,
-        step=1,
+    cuts_mode = st.selectbox(
+        "Number of cuts",
+        ["Exactly N", "At most N", "Any"],
+        index=0,
     )
+    num_cuts = None
+    max_cuts = None
+    if cuts_mode != "Any":
+        n_cuts = int(st.number_input("N:", min_value=1, max_value=20, value=3, step=1))
+        if cuts_mode == "Exactly N":
+            num_cuts = n_cuts
+        else:
+            max_cuts = n_cuts
 
     min_fragment = st.number_input(
         "Minimum fragment size (bp):",
@@ -209,9 +245,14 @@ def main() -> None:
     )
 
     filter_by_subseq = st.checkbox(
-        "Only show enzymes that cut inside target subsequences",
+        "Only show enzymes cutting in any target region",
         value=False,
-        help="Requires at least one subsequence above to be found in the plasmid.",
+        help="Requires at least one target region to be found in the plasmid.",
+    )
+    filter_all_targets = st.checkbox(
+        "Must cut in every target region",
+        value=False,
+        help="Enzyme must have at least one cut in each target region.",
     )
 
 
@@ -251,53 +292,71 @@ def main() -> None:
 
         render_sequence_stats(sequence)
 
-        # Subsequence matching
+        # Subsequence / region processing
         subseq_pairs = parse_subseq_input(subseq_input)
-        subseq_labels = {seq: label for label, seq in subseq_pairs}
-        raw_subseqs = [seq for _, seq in subseq_pairs]
-        subseq_matches = {}
+        subseq_display = []
         all_matched_regions = []
+        regions_by_target = []
+        raw_seqs_to_find = []
+        seq_label_map = {}
 
-        if raw_subseqs:
-            subseq_matches = find_subsequence_matches(sequence, raw_subseqs)
-            for positions in subseq_matches.values():
+        for label, value in subseq_pairs:
+            pos_range = parse_position_range(value, len(sequence))
+            if pos_range is not None:
+                start, end = pos_range
+                subseq_display.append({
+                    "label": label, "length": end - start,
+                    "found": True, "positions": [(start, end)],
+                })
+                all_matched_regions.append((start, end))
+                regions_by_target.append([(start, end)])
+            else:
+                raw_seqs_to_find.append(value)
+                seq_label_map[value] = label
+
+        if raw_seqs_to_find:
+            seq_matches = find_subsequence_matches(sequence, raw_seqs_to_find)
+            for seq, positions in seq_matches.items():
+                subseq_display.append({
+                    "label": seq_label_map.get(seq, seq),
+                    "length": len(seq),
+                    "found": bool(positions),
+                    "positions": positions,
+                })
                 all_matched_regions.extend(positions)
+                if positions:
+                    regions_by_target.append(positions)
 
-        if filter_by_subseq and not all_matched_regions:
+        need_filter = filter_by_subseq or filter_all_targets
+        if need_filter and not all_matched_regions:
             st.error(
-                "Cannot filter by subsequences: none of the entered subsequences were found in the plasmid."
-                if raw_subseqs else
-                "Cannot filter by subsequences: no subsequences were entered."
+                "Cannot filter: none of the entered subsequences or regions were found."
+                if subseq_pairs else
+                "Cannot filter: no subsequences or regions were entered."
             )
             return
 
         # Enzyme search + filtering
         with st.spinner("Finding matching enzymes..."):
             enzymes_with_selected_cuts = find_enzymes_by_cut_count(
-                sequence, num_cuts=num_cuts, allowed_enzymes=enzyme_names
+                sequence, num_cuts=num_cuts, max_cuts=max_cuts, allowed_enzymes=enzyme_names
             )
             filtered = filter_enzymes_by_fragment_size(
                 enzymes_with_selected_cuts, len(sequence), min_fragment, max_fragment
             )
 
-        if filter_by_subseq:
-            filtered = [
-                e for e in filtered
-                if enzyme_cuts_in_regions(e[1], all_matched_regions)
-            ]
+        if filter_all_targets and regions_by_target:
+            filtered = [e for e in filtered if enzyme_cuts_in_all_targets(e[1], regions_by_target)]
+        elif filter_by_subseq and all_matched_regions:
+            filtered = [e for e in filtered if enzyme_cuts_in_regions(e[1], all_matched_regions)]
 
-        subseq_note = " and cutting inside target subsequences" if filter_by_subseq else ""
+        if filter_all_targets and regions_by_target:
+            subseq_note = " and cutting in every target region"
+        elif filter_by_subseq:
+            subseq_note = " and cutting in at least one target region"
+        else:
+            subseq_note = ""
 
-        # Subsequence display records
-        subseq_display = [
-            {
-                "label": subseq_labels.get(subseq, subseq),
-                "length": len(subseq),
-                "found": bool(positions),
-                "positions": positions,
-            }
-            for subseq, positions in subseq_matches.items()
-        ]
 
         # Gel + table rows
         gel_bytes = None
@@ -316,7 +375,7 @@ def main() -> None:
                     "Rank": idx,
                     "Enzyme": enzyme_name,
                     "Recognition site": meta["recognition_site"],
-                    "# cuts": num_cuts,
+                    "# cuts": len(cut_positions),
                     "Cut positions": ", ".join(str(p) for p in cut_positions),
                     "Fragments (bp)": " / ".join(str(f) for f in fragments),
                     "Optimal temp": meta["optimal_temp"],
@@ -332,6 +391,7 @@ def main() -> None:
             "enzymes_total": len(enzymes_with_selected_cuts),
             "filtered_count": len(filtered),
             "num_cuts": num_cuts,
+            "max_cuts": max_cuts,
             "min_fragment": min_fragment,
             "max_fragment": max_fragment,
             "subseq_note": subseq_note,
@@ -366,7 +426,11 @@ def main() -> None:
                     st.success(f"{tag} — {len(item['positions'])} match(es) at: {loc}")
 
         st.subheader("Single enzyme results")
-        st.success(f"Found {r['enzymes_total']} enzymes with exactly {r['num_cuts']} cuts.")
+        _nc = r["num_cuts"]
+        cuts_label = ("1 or more cuts" if _nc is None and not r.get("max_cuts")
+                      else f"at most {r['max_cuts']} cuts" if r.get("max_cuts")
+                      else f"exactly {_nc} cuts")
+        st.success(f"Found {r['enzymes_total']} enzymes with {cuts_label}.")
         st.info(
             f"{r['filtered_count']} enzymes remain after filtering fragments between "
             f"{r['min_fragment']} and {r['max_fragment']} bp{r['subseq_note']}."
@@ -505,7 +569,8 @@ def main() -> None:
     st.sidebar.markdown(
         "- **Star activity** — some enzymes (e.g. EcoRI, PstI) show relaxed specificity at 50% activity in CutSmart. Use HF versions to avoid this.\n"
         "- **Cut positions** are 1-based and refer to the top strand.\n"
-        "- **Fragment sizes** assume a circular plasmid."
+        "- **Fragment sizes** assume a circular plasmid.\n"
+        "- **Missing bands** — fragments smaller than the ladder's lowest rung (~100 bp for most ladders) are not visible on the gel. Check the Fragments (bp) column in the Enzyme Table to see all fragment sizes."
     )
 
 
